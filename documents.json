@@ -1,11 +1,48 @@
 [
   {
-    "name": "example",
-    "title": "TODO(author): the first document this industry must produce",
-    "for_each": "select gen_random_uuid() as id, 'Example' as name",
-    "file": "name",
+    "name": "rent-statement",
+    "title": "Rent statement",
+    "for_each": "select t.id, t.number || ' ' || h.name as label from tenancies t join households h on h.id = t.household_id where t.ended_on is null order by t.number",
+    "file": "label",
     "sections": [
-      { "title": "Details", "sql": "select 'replace me' as item, $1::text as record_id" }
+      { "title": "Your tenancy", "sql": "select tenancy, property, address, lead_tenant, started_on, round(rent_cents/100.0,2) as weekly_rent, currency from v_tenancies where tenancy_id = $1" },
+      { "title": "Balance", "note": "A positive balance is rent owing. A negative balance is rent paid in advance.", "sql": "select round(balance_cents/100.0,2) as balance, days_in_arrears, last_payment_on, round(last_payment_cents/100.0,2) as last_payment from v_balances where tenancy_id = $1" },
+      { "title": "The last 12 weeks", "sql": "select posted_on, kind, round(amount_cents/100.0,2) as amount, reference from ledger where tenancy_id = $1 and posted_on > current_date - 84 order by posted_on, kind desc" }
+    ]
+  },
+  {
+    "name": "rent-assessment",
+    "title": "Rent assessment",
+    "for_each": "select ra.tenancy_id as id, ra.tenancy || ' ' || ra.lead_tenant as label from v_rent_assessment ra where ra.method = 'formula' order by ra.tenancy",
+    "file": "label",
+    "sections": [
+      { "title": "Household income counted", "note": "Each person's band sets the share of their income your rent policy counts. Children under 18 are not assessed.", "sql": "select m.name, m.band, round(m.income_weekly_cents/100.0,2) as weekly_income, m.income_source, m.pct as percent_counted, round(m.income_weekly_cents * m.pct / 10000.0, 2) as counted from v_member_rates m join tenancies t on t.household_id = m.household_id and t.ended_on is null where t.id = $1 order by m.income_weekly_cents desc" },
+      { "title": "How the rent is worked out", "sql": "select policy, round(income_part_cents/100.0,2) as income_part, round(ftb_part_cents/100.0,2) as family_tax_benefit_part, round(cra_part_cents/100.0,2) as rent_assistance_part, round(assessed_cents/100.0,2) as assessed, round(market_rent_cents/100.0,2) as market_rent, round(policy_rent_cents/100.0,2) as rent_under_policy, round(rent_cents/100.0,2) as rent_charged_now, currency from v_rent_assessment where tenancy_id = $1" }
+    ]
+  },
+  {
+    "name": "property-compliance",
+    "title": "Property compliance record",
+    "for_each": "select id, code as label from properties where not offline order by code",
+    "file": "label",
+    "sections": [
+      { "title": "Checks", "sql": "select smoke_on, smoke_due, gas_on, gas_due, electrical_on, electrical_due, healthy_homes_on, inspected_on, inspection_due from v_checks where property_id = $1" },
+      { "title": "Every inspection on record", "sql": "select done_on, kind, done_by, result, note from inspections where property_id = $1 order by done_on desc" },
+      { "title": "Open findings", "sql": "select c.rule, c.finding, c.due_date, c.source from v_compliance c join properties p on p.code = c.record where p.id = $1" }
+    ]
+  },
+  {
+    "name": "board-report",
+    "title": "Board and regulator performance report",
+    "for_each": "select 1 as id, business_name as label from settings",
+    "file": "label",
+    "sections": [
+      { "title": "Portfolio", "sql": "select g.name as program, count(p.id) as homes, count(p.id) filter (where exists (select 1 from tenancies t where t.property_id = p.id and t.ended_on is null)) as tenanted, count(p.id) filter (where p.offline) as offline from programs g join properties p on p.program_id = g.id where $1::int = 1 group by g.name order by g.name" },
+      { "title": "Rent arrears", "sql": "select jurisdiction, count(*) as households_behind, round(sum(balance_cents)/100.0,2) as owed, max(days_in_arrears) as longest_days, currency from v_arrears where ended_on is null and $1::int = 1 group by jurisdiction, currency order by jurisdiction" },
+      { "title": "Repairs in the last 12 months", "sql": "select priority, count(*) as reported, count(*) filter (where done_on is not null) as done, count(*) filter (where done_on is not null and done_on <= target_on) as on_time, round(avg(done_on - reported_on) filter (where done_on is not null), 1) as avg_days from v_repairs where reported_on >= current_date - 365 and $1::int = 1 group by priority order by priority" },
+      { "title": "Complaints and appeals in the last 12 months", "sql": "select kind, count(*) as received, count(*) filter (where responded_on is not null) as answered, count(*) filter (where state = 'overdue') as overdue from v_complaints where received_on >= current_date - 365 and $1::int = 1 group by kind order by kind" },
+      { "title": "Tenancies ended in the last 12 months", "sql": "select end_reason, count(*) as tenancies from tenancies where ended_on >= current_date - 365 and $1::int = 1 group by end_reason order by tenancies desc" },
+      { "title": "Open record checks", "sql": "select rule, count(*) as findings from v_compliance where $1::int = 1 group by rule order by findings desc" }
     ]
   }
 ]

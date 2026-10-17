@@ -2,13 +2,37 @@
   {
     "name": "week",
     "title": "This week",
-    "subtitle": "Community Housing for Claude Code: what needs attention, rendered by npm run view",
+    "subtitle": "Community Housing for Claude Code: what needs a housing officer this week",
     "sections": [
-      {
-        "title": "Needs attention",
-        "note": "TODO(author): point this at the industry's attention view (overdue, stuck, quiet).",
-        "sql": "select 'replace me' as item, 'TODO(author)' as why"
-      }
+      { "title": "Record checks", "note": "Each rule cites its source in docs/compliance.md. Not legal advice.", "sql": "select rule, record, who, finding, due_date from v_compliance order by due_date, rule" },
+      { "title": "Rent arrears", "note": "Days in arrears is the balance expressed in days of rent. The threshold is the point your state's tenancy law allows a formal notice.", "sql": "select property, lead_tenant, jurisdiction, round(balance_cents/100.0,2) as owed, days_in_arrears, threshold_days, last_payment_on, arrears_notice_on from v_arrears where ended_on is null order by days_in_arrears desc" },
+      { "title": "Repairs late against target", "sql": "select number, property, priority, description, contractor, reported_on, target_on from v_repairs where state = 'overdue' order by target_on" },
+      { "title": "Income reviews due in the next 30 days", "sql": "select property, lead_tenant, income_checked_on, review_due_on from v_rent_assessment where method = 'formula' and review_due_on <= current_date + 30 order by review_due_on" }
+    ]
+  },
+  {
+    "name": "rent",
+    "title": "Rent against policy",
+    "subtitle": "What each household is charged, what the rent policy says, and the gap",
+    "sections": [
+      { "title": "Every current tenancy", "note": "Policy rent is the share of household income plus CRA your policy sets, capped at market rent. A positive gap means the household pays more than the policy says.", "sql": "select property, lead_tenant, policy, round(household_income_cents/100.0,2) as household_income, round(cra_part_cents/100.0,2) as cra, round(market_rent_cents/100.0,2) as market_rent, round(policy_rent_cents/100.0,2) as policy_rent, round(rent_cents/100.0,2) as charged, round((rent_cents - policy_rent_cents)/100.0,2) as gap, currency from v_rent_assessment order by abs(rent_cents - policy_rent_cents) desc, property" }
+    ]
+  },
+  {
+    "name": "voids",
+    "title": "Empty homes",
+    "subtitle": "Homes with nobody in them, what is holding each up, and who on the waiting list fits",
+    "sections": [
+      { "title": "Voids", "sql": "select property, address, suburb, bedrooms, stage, empty_since, days_empty, round(rent_lost_cents/100.0) as rent_lost, open_repairs from v_voids order by days_empty desc" },
+      { "title": "Applicants who fit an empty home", "sql": "select v.property, v.suburb, v.bedrooms, w.ref, w.name, w.band, w.days_waiting from v_voids v join v_waitlist w on w.status = 'waiting' and w.bedrooms_needed <= v.bedrooms and w.bedrooms_needed >= v.bedrooms - 1 and (not w.needs_accessible or v.accessible) and (w.areas is null or position(lower(v.suburb) in lower(w.areas)) > 0) where v.stage <> 'offline' order by v.property, w.days_waiting desc" }
+    ]
+  },
+  {
+    "name": "safety",
+    "title": "Safety checks",
+    "subtitle": "Smoke alarms, gas and electrical checks, healthy homes and routine inspections by property",
+    "sections": [
+      { "title": "Every lettable property", "sql": "select property, suburb, jurisdiction, tenanted, smoke_on, smoke_due, gas_on, gas_due, electrical_on, electrical_due, healthy_homes_on, inspected_on, inspection_due from v_checks order by property" }
     ]
   }
 ]

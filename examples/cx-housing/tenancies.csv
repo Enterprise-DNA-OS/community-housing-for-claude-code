@@ -1,0 +1,4 @@
+Property Ref,Address,Suburb,State,Region,Property Type,Bedrooms,Program,Market Rent,Tenancy Ref,Household Ref,Lead Tenant,Phone,Email,Tenancy Start,Weekly Rent,Last Income Review
+CX-5001,12 Banks Ave,Kingswood,NSW,Western Sydney,House,3,NSW-SH,"$590.00",TEN-88001,HHX-88001,Rosa Delgado,0412 555 501,rosa@example.com,14/03/2021,"$312.50",02/05/2026
+CX-5002,4/9 Derby St,Kingswood,NSW,Western Sydney,Unit,2,NSW-SH,"$480.00",TEN-88002,HHX-88002,Arjun Mehta,0412 555 502,,01/11/2023,"$265.00",15/11/2025
+CX-5003,7 Orth St,Kingswood,NSW,Western Sydney,Townhouse,2,NSW-SH,"$510.00",,,,,,,,
