@@ -235,7 +235,7 @@ try {
   for (const file of fs.readdirSync(cmdDir).filter((f) => f.endsWith('.md') && f !== 'README.md')) {
     const text = fs.readFileSync(path.join(cmdDir, file), 'utf8');
     const used = [...text.matchAll(/node scripts\/housing\.mjs ([a-z-]+)/g)].map((m) => m[1]);
-    ok(/^---\ndescription:/.test(text) && used.every((u) => help.includes(u)), `/${file.replace('.md', '')} has a description and uses real commands`);
+    ok(/^---\r?\ndescription:/.test(text) && used.every((u) => help.includes(u)), `/${file.replace('.md', '')} has a description and uses real commands`);
   }
   const prose = ['README.md', 'CLAUDE.md', 'AGENTS.md', ...fs.readdirSync(path.join(REPO_ROOT, 'docs')).map((f) => `docs/${f}`), ...fs.readdirSync(cmdDir).map((f) => `.claude/commands/${f}`)];
   ok(prose.every((f) => !fs.readFileSync(path.join(REPO_ROOT, f), 'utf8').includes('TODO(author)')), 'No TODO(author) left');
